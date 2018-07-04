@@ -1,0 +1,16 @@
+<?php
+
+// The id of the address book to use to automatically set a
+// user's full name in their new identity. (This should be an
+// string, which refers to the $config['ldap_public'] array.)
+$config['esco_user_identity_addressbook'] = 'Eleves';
+
+// When automatically setting a user's full name in their
+// new identity, match the user's login name against this field.
+$config['esco_user_identity_match'] = 'uid';
+
+$config['esco_user_identity_complete_user_fields'] = array('ESCOUAI', 'ENTEleveClasses', 'ENTEleveGroupes', 'displayName');
+// Determine whether to import user's identities on each login.
+// New user identity will be created for each e-mail address
+// present in address book, but not assigned to any identity.
+$config['escouser_identity_onlogin'] = false;
