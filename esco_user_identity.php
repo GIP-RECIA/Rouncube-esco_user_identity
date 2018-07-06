@@ -103,7 +103,7 @@ class esco_user_identity extends rcube_plugin
         $this->load_config();
 
         $addressbook = $this->rc->config->get('esco_user_identity_addressbook');
-        $ldap_config = (array)$this->rc->config->get('ldap_public');
+        $ldap_config = (array)$this->rc->config->get('esco_ldap');
         $match = $this->rc->config->get('esco_user_identity_match');
 
         if (empty($addressbook) || empty($match) || empty($ldap_config[$addressbook])) {
@@ -122,60 +122,10 @@ class esco_user_identity extends rcube_plugin
 
 class esco_user_identity_ldap_backend extends rcube_ldap{
 
-    private $str_dyn='%dynamic';
-
     function __construct($p, $debug, $mail_domain, $search)
     {
         parent::__construct($p, $debug, $mail_domain);
         $this->prop['search_fields'] = (array)$search;
     }
 
-    function set_search_set($filter)
-    {
-        parent::set_search_set($this->apply_dyn_filter($filter));
-
-    }
-
-    private function apply_dyn_filter($filter)
-    {
-        $user_data = $_SESSION['user_data'];
-        if (strlen(strstr($filter, $this->str_dyn)) > 0) {
-            $dynamic_user_fields = $this->prop['dynamic_user_fields'];
-            $dynamic_filter = '';
-            $required_respected = true;
-            if (!empty($dynamic_user_fields)) {
-                $fields = array();
-                if (is_array($dynamic_user_fields)) {
-                    $fields = $dynamic_user_fields;
-                } else {
-                    $fields = array($dynamic_user_fields);
-                }
-                foreach ($fields as $user_attr) {
-                    $attr = strtolower($user_attr);
-                    if (!empty($user_data[$attr])) {
-                        $dynamic_filter .= "(|";
-                        foreach ($user_data[$attr] as $val) {
-                            if (!empty($val)) {
-                                $dynamic_filter .= "(|";
-                                foreach ($fields as $user2_attr) {
-                                    $attr2 = strtolower($user2_attr);
-                                    $dynamic_filter .= "(" . $attr2 . "=" . $val . ")";
-                                }
-                                $dynamic_filter .= ")";
-                            }
-                        }
-                        $dynamic_filter .= ")";
-                    } else if (in_array(strtolower($user_attr), $this->prop['required_fields'])) {
-                        $required_respected = false;
-                    }
-                }
-            }
-            if ($required_respected || (is_array($user_data) && !array_key_exists('new_user_inited', $user_data))) {
-                $new_filter = str_replace($this->str_dyn, $dynamic_filter, $filter);
-                $this->dyn_filter = $dynamic_filter;
-                return $new_filter;
-            }
-        }
-        return $filter;
-    }
 }
