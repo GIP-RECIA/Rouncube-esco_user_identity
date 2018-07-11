@@ -12,17 +12,15 @@
  */
 class esco_user_identity extends rcube_plugin
 {
-    public $task = 'login';
+//    public $task = 'login';
 
-    private $rc;
     private $ldap;
 
     function init()
     {
-        $this->rc = rcmail::get_instance();
-
         $this->add_hook('user_create', array($this, 'lookup_user_name'));
         $this->add_hook('login_after', array($this, 'login_after'));
+        $this->add_hook('refresh_user', array($this, 'refresh_user'));
     }
 
     function lookup_user_name($args)
@@ -69,29 +67,33 @@ class esco_user_identity extends rcube_plugin
         $this->load_config();
 
         // on récupère la liste des attributs utilisateurs à récupérer du ldap
-        $user_fields = $this->rc->config->get('esco_user_identity_complete_user_fields');
+        $user_fields = rcmail::get_instance()->config->get('esco_user_identity_complete_user_fields');
         // si cette liste est définie on récupère les attributs du ldap pour les ajouter à la définiton du user
         if (!empty($user_fields)) {
             if ($this->init_ldap('')) {
-                $results = $this->ldap->search('*', $this->rc->user->data['username'], 1);
+                $results = $this->ldap->search('*', rcmail::get_instance()->user->data['username'], 1);
                 if (count($results->records) == 1) {
                     // on ajoute les attributs utilisateur
                     foreach ($user_fields as $attr) {
                         $user_attr = strtolower($attr);
                         $val = $results->records[0]['_raw_attrib'][$user_attr];
                         if (!empty($val)) {
-                            $this->rc->user->data[$user_attr] = $val;
+                            rcmail::get_instance()->user->data[$user_attr] = $val;
                         }
                     }
-                    $this->rc->user->data['esco_user_inited'] = 'DONE';
+                    rcmail::get_instance()->user->data['esco_user_inited'] = 'DONE';
                 }
             }
         }
 
-        $_SESSION['user_data'] = $this->rc->user->data;
-        $this->ldap->user = $this->rc->user;
+        $_SESSION['user_data'] = rcmail::get_instance()->user->data;
+        $this->ldap->user = rcmail::get_instance()->user;
 
         return $args;
+    }
+
+    function refresh_user($args){
+        return $this->login_after($args);
     }
 
     private function init_ldap($host)
@@ -102,9 +104,9 @@ class esco_user_identity extends rcube_plugin
 
         $this->load_config();
 
-        $addressbook = $this->rc->config->get('esco_user_identity_addressbook');
-        $ldap_config = (array)$this->rc->config->get('esco_ldap');
-        $match = $this->rc->config->get('esco_user_identity_match');
+        $addressbook = rcmail::get_instance()->config->get('esco_user_identity_addressbook');
+        $ldap_config = (array)rcmail::get_instance()->config->get('esco_ldap');
+        $match = rcmail::get_instance()->config->get('esco_user_identity_match');
 
         if (empty($addressbook) || empty($match) || empty($ldap_config[$addressbook])) {
             return false;
@@ -112,8 +114,8 @@ class esco_user_identity extends rcube_plugin
 
         $this->ldap = new esco_user_identity_ldap_backend(
             $ldap_config[$addressbook],
-            $this->rc->config->get('ldap_debug'),
-            $this->rc->config->mail_domain($host),
+            rcmail::get_instance()->config->get('ldap_debug'),
+            rcmail::get_instance()->config->mail_domain($host),
             $match);
 
         return $this->ldap->ready;
